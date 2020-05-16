@@ -29,7 +29,9 @@ public class OrderMaster {
     private String buyerOpenid;
     private BigDecimal orderAmount;
     private Integer orderStatus= OrderStatusEnum.NEW.getCode();
+    private String orderStatusStr;
     private Integer payStatus= PayStatusEnum.WAIT.getCode();
+    private String payStatusStr;
     private Date createTime;
     private Date updateTime;
 

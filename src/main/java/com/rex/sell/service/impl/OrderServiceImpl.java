@@ -1,5 +1,6 @@
 package com.rex.sell.service.impl;
 
+import com.rex.sell.converter.OrderMaster2OrderDTOConvert;
 import com.rex.sell.dataobject.Cart;
 import com.rex.sell.dataobject.OrderDetail;
 import com.rex.sell.dataobject.OrderMaster;
@@ -19,12 +20,16 @@ import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -79,8 +84,9 @@ public class OrderServiceImpl implements OrderService {
         orderMaster.setOrderId(orderId);
         orderMaster.setOrderAmount(totalPrice);
         orderMaster.setOrderStatus(OrderStatusEnum.NEW.getCode());
+        orderMaster.setOrderStatusStr(OrderStatusEnum.NEW.getMessage());
         orderMaster.setPayStatus(PayStatusEnum.WAIT.getCode());
-
+        orderMaster.setPayStatusStr(PayStatusEnum.WAIT.getMessage());
         orderMasterRepository.save(orderMaster);
 
         //4. 扣库存
@@ -95,12 +101,30 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDTO findOne(String orderId) {
-        return null;
+        Optional<OrderMaster> optional = orderMasterRepository.findById(orderId);
+        OrderMaster orderMaster = optional.get();
+        if(orderMaster==null){
+            throw new SellException(ResultEnum.ORDER_NOT_EXIST);
+        }
+
+        OrderDTO orderDTO = new OrderDTO();
+        BeanUtils.copyProperties(orderMaster,orderDTO);
+
+        List<OrderDetail> orderDetails = orderDetailRepository.findByOrderId(orderMaster.getOrderId());
+        if(CollectionUtils.isEmpty(orderDetails)){
+            throw new SellException(ResultEnum.ORDER_DETAIL_NOT_EXIST);
+        }
+        orderDTO.setOrderDetailList(orderDetails);
+
+        return orderDTO;
     }
 
     @Override
     public Page<OrderDTO> findList(String buyerOpenId, Pageable pageable) {
-        return null;
+        Page<OrderMaster> orderMasters = orderMasterRepository.findByBuyerOpenid(buyerOpenId, pageable);
+        List<OrderDTO> orderDTOS =OrderMaster2OrderDTOConvert.convert(orderMasters.getContent());
+        Page<OrderDTO> result = new PageImpl<>(orderDTOS,orderMasters.getPageable(),orderMasters.getTotalElements());
+        return result;
     }
 
     @Override

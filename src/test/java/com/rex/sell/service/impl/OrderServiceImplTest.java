@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
@@ -34,7 +36,7 @@ class OrderServiceImplTest {
         for (int i = 1; i <=3; i++) {
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setProductId(String.valueOf(i));
-            orderDetail.setProductQuantity(10);
+            orderDetail.setProductQuantity(10000);
             orderDetails.add(orderDetail);
         }
 
@@ -48,14 +50,20 @@ class OrderServiceImplTest {
 
     @Test
     void findOne() {
+        OrderDTO one = orderService.findOne("1261594804672925696");
+        System.out.println(one);
+        Assert.notNull(one,"");
     }
 
     @Test
     void findList() {
+        Page<OrderDTO> orderDTOS = orderService.findList("openid12345679", PageRequest.of(0, 100));
+        System.out.println(orderDTOS);
     }
 
     @Test
     void cancel() {
+        
     }
 
     @Test
