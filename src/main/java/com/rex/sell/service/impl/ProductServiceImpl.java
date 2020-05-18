@@ -31,8 +31,11 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductInfo findOne(String productId) {
-        Optional<ProductInfo> byId = repository.findById(productId);
-        return byId.get();
+        Optional<ProductInfo> optional = repository.findById(productId);
+        if (optional.isPresent()) {
+            return optional.get();
+        }
+        return null;
     }
 
     @Override
@@ -54,13 +57,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void increaseStock(List<Cart> carts) {
-        for (Cart cart:carts){
+        for (Cart cart : carts) {
             ProductInfo productInfo = findOne(cart.getProductId());
-            if(productInfo==null){
+            if (productInfo == null) {
                 throw new SellException(ResultEnum.PRODUCT_NOT_EXIST);
             }
 
-            Integer result= productInfo.getProductStock()+cart.getProductQuantity();
+            Integer result = productInfo.getProductStock() + cart.getProductQuantity();
             productInfo.setProductStock(result);
             save(productInfo);
         }
@@ -69,14 +72,14 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void decreaseStock(List<Cart> carts) {
-        for (Cart cart:carts){
+        for (Cart cart : carts) {
             ProductInfo productInfo = findOne(cart.getProductId());
-            if(productInfo==null){
+            if (productInfo == null) {
                 throw new SellException(ResultEnum.PRODUCT_NOT_EXIST);
             }
 
-            Integer result= productInfo.getProductStock()-cart.getProductQuantity();
-            if(result<0){
+            Integer result = productInfo.getProductStock() - cart.getProductQuantity();
+            if (result < 0) {
                 throw new SellException(ResultEnum.PRODUCT_STOCK_ERROR);
             }
             productInfo.setProductStock(result);

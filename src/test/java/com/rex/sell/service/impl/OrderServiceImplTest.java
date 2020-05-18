@@ -2,6 +2,8 @@ package com.rex.sell.service.impl;
 
 import com.rex.sell.dataobject.OrderDetail;
 import com.rex.sell.dto.OrderDTO;
+import com.rex.sell.enums.OrderStatusEnum;
+import com.rex.sell.enums.PayStatusEnum;
 import com.rex.sell.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -63,14 +65,22 @@ class OrderServiceImplTest {
 
     @Test
     void cancel() {
-        
+        OrderDTO orderDTO = orderService.findOne("1261594804672925696");
+        orderDTO = orderService.cancel(orderDTO);
+        Assert.isTrue(orderDTO.getOrderStatus()== OrderStatusEnum.CANCEL.getCode(),"");
     }
 
     @Test
     void finish() {
+        OrderDTO orderDTO = orderService.findOne("1261594804672925696");
+        orderDTO = orderService.finish(orderDTO);
+        Assert.isTrue(orderDTO.getOrderStatus()== OrderStatusEnum.FINISHED.getCode(),"");
     }
 
     @Test
     void paid() {
+        OrderDTO orderDTO = orderService.findOne("1261594867956584448");
+        orderDTO = orderService.paid(orderDTO);
+        Assert.isTrue(orderDTO.getPayStatus()== PayStatusEnum.SUCCESS.getCode(),"");
     }
 }

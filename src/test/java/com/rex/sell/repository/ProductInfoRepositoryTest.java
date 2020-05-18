@@ -20,7 +20,7 @@ class ProductInfoRepositoryTest {
     @Test
     void  saveTest(){
         ProductInfo productInfo=new ProductInfo();
-        productInfo.setProductId("12345451");
+        productInfo.setProductId("1234545221");
         productInfo.setCategoryType(1);
         productInfo.setProductDescription("xxxx");
         productInfo.setProductIcon("xxx");

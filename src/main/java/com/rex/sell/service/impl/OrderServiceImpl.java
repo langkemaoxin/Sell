@@ -15,6 +15,7 @@ import com.rex.sell.repository.OrderMasterRepository;
 import com.rex.sell.service.OrderService;
 import com.rex.sell.service.ProductService;
 import com.rex.sell.utils.IdWorker;
+import lombok.extern.slf4j.Slf4j;
 import net.bytebuddy.asm.Advice;
 import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.BeanUtils;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
  * @Version 1.0
  */
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     @Autowired
@@ -80,8 +82,9 @@ public class OrderServiceImpl implements OrderService {
 
         //3. 写入订单数据库()
         OrderMaster orderMaster = new OrderMaster();
+        orderDTO.setOrderId(orderId);
+
         BeanUtils.copyProperties(orderDTO, orderMaster);
-        orderMaster.setOrderId(orderId);
         orderMaster.setOrderAmount(totalPrice);
         orderMaster.setOrderStatus(OrderStatusEnum.NEW.getCode());
         orderMaster.setOrderStatusStr(OrderStatusEnum.NEW.getMessage());
@@ -129,16 +132,88 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDTO cancel(OrderDTO orderDTO) {
-        return null;
+
+        orderDTO =findOne(orderDTO.getOrderId());
+        if(orderDTO==null){
+            throw new SellException(ResultEnum.ORDER_NOT_EXIST);
+        }
+
+        if(CollectionUtils.isEmpty(orderDTO.getOrderDetailList())){
+            throw new SellException(ResultEnum.ORDER_DETAIL_NOT_EXIST);
+        }
+
+        //恢复商品的库存
+        List<Cart> cartList = orderDTO.getOrderDetailList().stream().map(o -> new Cart(o.getProductId(), o.getProductQuantity()))
+                .collect(Collectors.toList());
+
+        productService.increaseStock(cartList);
+
+        //如果已经支付了，需要退款
+        if(orderDTO.getPayStatus()==PayStatusEnum.SUCCESS.getCode()){
+
+        }
+
+        Optional<OrderMaster> masterOptional = orderMasterRepository.findById(orderDTO.getOrderId());
+
+        OrderMaster orderMaster=masterOptional.get();
+
+        orderMaster.setOrderStatus(OrderStatusEnum.CANCEL.getCode());
+        orderMaster.setOrderStatusStr(OrderStatusEnum.CANCEL.getMessage());
+        orderMasterRepository.save(orderMaster);
+
+        BeanUtils.copyProperties(orderMaster,orderDTO);
+        return orderDTO;
     }
 
     @Override
+    @Transactional
     public OrderDTO finish(OrderDTO orderDTO) {
-        return null;
+        //判断订单状态
+        if(!orderDTO.getOrderStatus().equals(OrderStatusEnum.NEW.getCode())){
+            log.error("订单【{}】状态异常",orderDTO);
+            throw new SellException(ResultEnum.ORDER_PAY_STATUS_ERROR);
+        }
+
+        //修改订单状态
+        orderDTO.setOrderStatus(OrderStatusEnum.FINISHED.getCode());
+        OrderMaster orderMaster=new OrderMaster();
+        BeanUtils.copyProperties(orderDTO,orderMaster);
+
+        OrderMaster updateResult = orderMasterRepository.save(orderMaster);
+        if(updateResult==null){
+            log.error("订单【{}】更新失败",orderMaster);
+            throw new SellException(ResultEnum.ORDER_NOT_EXIST);
+        }
+
+        return orderDTO;
     }
 
     @Override
+    @Transactional
     public OrderDTO paid(OrderDTO orderDTO) {
-        return null;
+
+        //判断订单的完结状态 只有新订单才能够进行支付
+        if(!orderDTO.getOrderStatus().equals(OrderStatusEnum.NEW.getCode())){
+            log.error("【订单状态不正确】{}",orderDTO);
+            throw new SellException(ResultEnum.ORDER_STATUS_ERROR);
+        }
+
+        //判断状态
+        if(!orderDTO.getPayStatus().equals(PayStatusEnum.WAIT.getCode())){
+            log.error("【订单支付状态不正确】{}",orderDTO);
+            throw new SellException(ResultEnum.ORDER_PAY_STATUS_ERROR);
+        }
+
+        //修改订单状态
+        orderDTO.setPayStatus(PayStatusEnum.SUCCESS.getCode());
+        OrderMaster orderMaster=new OrderMaster();
+        BeanUtils.copyProperties(orderDTO,orderMaster);
+        OrderMaster updateResult = orderMasterRepository.save(orderMaster);
+        if(updateResult==null){
+            log.error("【订单支付完成】,{}",orderMaster);
+            throw new SellException(ResultEnum.ORDER_UPDATE_ERROR);
+        }
+
+        return orderDTO;
     }
 }
